@@ -28,7 +28,7 @@ class EligibilityService {
 
   getValueFromPath(object, path) {
     const keys = path.split(".");
-    let value = object;
+    let value = structuredClone(object);
     for (const key of keys) {
       if (Array.isArray(value)) {
         value = value.map((item) => item[key]);
@@ -56,23 +56,15 @@ class EligibilityService {
         case "in":
           return this.isInclude(value, condition[conditionType]);
         case "and":
-          const andSubConditions = Object.keys(condition[conditionType]);
-          for (const subCondition of andSubConditions) {
-            const test = this.applyCondition(value, condition[conditionType]);
-            delete condition[conditionType][subCondition];
-            if (!test) {
-              return false;
-            }
-          }
-          return true;
+          const andSubConditions = Object.entries(condition[conditionType]);
+          return andSubConditions.every((subCondition) =>
+            this.applyCondition(value, { [subCondition[0]]: subCondition[1] })
+          );
         case "or":
-          const orSubConditions = Object.keys(condition[conditionType]);
-          const tests = orSubConditions.map((subCondition) => {
-            const test = this.applyCondition(value, condition[conditionType]);
-            delete condition[conditionType][subCondition];
-            return test;
-          });
-          return tests.includes(true);
+          const orSubConditions = Object.entries(condition[conditionType]);
+          return orSubConditions.some((subCondition) =>
+            this.applyCondition(value, { [subCondition[0]]: subCondition[1] })
+          );
       }
     } else {
       if (Array.isArray(value)) {
